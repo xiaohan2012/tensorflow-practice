@@ -94,3 +94,5 @@ outputs/*
 data/*
 figs/*
 bad_examples/*
+
+MNIST_data
