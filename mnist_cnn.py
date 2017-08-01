@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 from tensorflow.examples.tutorials.mnist import input_data
@@ -20,7 +19,7 @@ def bias_variable(shape, name=None):
 
 def conv2d(x, W):
     return tf.nn.conv2d(x, W,
-                        strides=[1, 2, 2, 1],
+                        strides=[1, 1, 1, 1],
                         padding='SAME')
 
 
@@ -46,20 +45,23 @@ b_conv2 = bias_variable([64], 'b_conv2')
 
 h_conv2 = tf.nn.relu(conv2d(h_pool1, W_conv2) + b_conv2)  # relu before pooling
 h_pool2 = max_pooling(h_conv2)
+h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
 
 # 3rd layer: fc
 # input shape is height x width x depth, output is size 1024
 W_fc1 = weight_variable([7 * 7 * 64, 1024], 'W_fc1')
 b_fc1 = bias_variable([1024], 'b_fc1')
 
-h_pool2_flat = tf.reshape(h_pool2, [-1, 7 * 7 * 64])
 h_fc1 = tf.nn.relu(tf.matmul(h_pool2_flat, W_fc1) + b_fc1)
 
 # 4th layer -- output: softmax
 W_fc2 = weight_variable([1024, 10], 'W_fc2')
 b_fc2 = bias_variable([10], 'b_fc2')
 
-y = tf.matmul(h_fc1, W_fc2) + b_fc2
+keep_prob = tf.placeholder(tf.float32)
+h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
+
+y = tf.matmul(h_fc1_drop, W_fc2) + b_fc2
 
 loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_correct, logits=y))
 
@@ -72,13 +74,13 @@ with tf.Session() as sess:
 
     # DEBUG
     file_writer = tf.summary.FileWriter('logs/', sess.graph)
-    
-    batch = mnist.train.next_batch(50)
+        
     for i in range(20000):
-        if (i+1) % 100 == 0:
-            acc = accuracy.eval({x: batch[0], y_correct: batch[1]})
-            print('at iter {}, accuracy {}'.format(i+1, acc))
-        train_step.run({x: batch[0], y_correct: batch[1]})
+        batch = mnist.train.next_batch(50)
+        if i % 100 == 0:
+            acc = accuracy.eval(feed_dict={x: batch[0], y_correct: batch[1], keep_prob: 1.0})
+            print('at iter {}, accuracy {}'.format(i, acc))
+        train_step.run(feed_dict={x: batch[0], y_correct: batch[1], keep_prob: 0.5})
     print('training done')
     print('test accuracy {}'.format(accuracy.eval(
-        {x: mnist.test.images, y_correct: mnist.test.labels})))
+        feed_dict={x: mnist.test.images, y_correct: mnist.test.labels, keep_prob: 1.0})))
