@@ -13,7 +13,7 @@ class TextCNN:
         self.input_y = tf.placeholder(
             tf.float32, [None, num_classes], name='input_y')
         self.dropout_keep_prob = tf.placeholder(
-            tf.float32, 1, name='dropout_keep_prob')
+            tf.float32, name='dropout_keep_prob')
 
         # variables
         with tf.device('/cpu:0'), tf.name_scope('embedding'):
@@ -24,7 +24,7 @@ class TextCNN:
             # make it into 4 dim
             # equivalent but more verbose way:
             # tf.reshape(embedded_x_3d, [-1, sentence_length, embedding_dim, 1])
-            self.embedded_x = tf.expand_dim(embedded_x_3d, -1)
+            self.embedded_x = tf.expand_dims(embedded_x_3d, -1)
 
         pooled_outputs = []  # to be concatenated
         for i, filter_size in enumerate(filter_sizes):
@@ -34,7 +34,7 @@ class TextCNN:
                 init_W = tf.truncated_normal(shape, stddev=0.1)
                 W = tf.Variable(init_W, name='W')
 
-                init_b = tf.constant(0.1, [num_filters])
+                init_b = tf.constant(0.1, shape=[num_filters])
                 b = tf.Variable(init_b, name='b')
                 conv = tf.nn.conv2d(self.embedded_x, W,
                                     padding="VALID", strides=[1, 1, 1, 1],
@@ -48,7 +48,7 @@ class TextCNN:
                     name='pool')
                 pooled_outputs.append(maxpool_out)
 
-        num_filters_total = num_filters * len(filter_size)
+        num_filters_total = num_filters * len(filter_sizes)
 
         # 4d: [batch, 1, 1, filter_sizes]
         # "3" here is tricky
@@ -68,7 +68,7 @@ class TextCNN:
                 tf.truncated_normal([num_filters_total, num_classes], stddev=0.1),
                 name='W')
             b = tf.Variable(
-                tf.constant(0.1, [num_classes]),
+                tf.constant(0.1, shape=[num_classes]),
                 name='b'
             )
 
@@ -77,7 +77,7 @@ class TextCNN:
             self.predictions = tf.argmax(self.scores, axis=1, name="predictions")
 
         with tf.name_scope('loss'):
-            losses = tf.nn.softmax_cross_entropy_with_logits(self.scores, self.input_y)
+            losses = tf.nn.softmax_cross_entropy_with_logits(logits=self.scores, labels=self.input_y)
             self.loss = tf.reduce_mean(losses)
 
         with tf.name_scope('accuracy'):
